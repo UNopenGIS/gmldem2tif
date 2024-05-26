@@ -52,7 +52,7 @@ def extract_tuple_list(doc, start_coordinates, raster_width, raster_height)
     raster_data << parts[1].to_f if parts.size == 2
     line_count += 1
   end
-  nodata_count = raster_width * raster_height - line_count - (raster_data.size - start_coordinates[1] * raster_width + start_coordinates[0])
+  nodata_count = raster_width * raster_height - raster_data.size
   nodata_count.times { raster_data << NODATA_VALUE }
   raster_data
 end
@@ -114,6 +114,7 @@ end
 
 def run
   zip_dir, dst_dir, verbose = parse_args
+  Dir.mkdir(dst_dir) unless Dir.exist?(dst_dir)
   main(zip_dir, dst_dir, verbose)
 end
 
