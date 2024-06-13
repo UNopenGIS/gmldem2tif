@@ -101,6 +101,7 @@ end
 
 def help
   puts "Usage: ruby gmldem2tif.rb [--verbose] <zip_dir> <dst_dir>"
+  exit 0
 end
 
 def parse_args
