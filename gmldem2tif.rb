@@ -8,7 +8,7 @@ EPSG_CODE = 6668
 def convert(input, dst_path, verbose)
   puts "TIF Path: #{dst_path}" if verbose
   doc = Nokogiri::XML(input) {|config| config.huge}
-  
+
   min_coordinates = parse_coordinate(doc.at_xpath('//gml:lowerCorner').text)
   max_coordinates = parse_coordinate(doc.at_xpath('//gml:upperCorner').text)
   raster_width, raster_height, start_coordinates = extract_dimensions(doc)
@@ -88,8 +88,11 @@ def process(zip_path, dst_dir, verbose)
       dst_name = entry.name.sub('.xml', '.tif')
       dst_path = "#{dst_dir}/#{dst_name}"
       input = entry.get_input_stream.read
-      convert(input, dst_path, verbose)
+      Process.fork do
+        convert(input, dst_path, verbose)
+      end
     end
+    Process.waitall
   end
 end
 
