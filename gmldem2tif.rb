@@ -1,3 +1,4 @@
+require 'optparse'
 require 'nokogiri'
 require 'gdal'
 require 'zip'
@@ -80,25 +81,27 @@ def write_raster_data(dataset, raster_data, raster_width, raster_height)
   band.flush_cache
 end
 
-def process(zip_path, dst_dir, verbose)
+def process(zip_path, dst_dir, nproc, verbose)
   puts "Processing #{zip_path}" if verbose
   Zip::File.open(zip_path) do |zip_file|
-    zip_file.each do |entry|
-      next unless entry.name.downcase.end_with?('.xml')
-      dst_name = entry.name.sub('.xml', '.tif')
-      dst_path = "#{dst_dir}/#{dst_name}"
-      input = entry.get_input_stream.read
-      Process.fork do
-        convert(input, dst_path, verbose)
+    zip_file.each_slice(nproc) do |entries|
+      entries.each do |entry|
+        next unless entry.name.downcase.end_with?('.xml')
+        dst_name = entry.name.sub('.xml', '.tif')
+        dst_path = "#{dst_dir}/#{dst_name}"
+        input = entry.get_input_stream.read
+        Process.fork do
+          convert(input, dst_path, verbose)
+        end
       end
+      Process.waitall
     end
-    Process.waitall
   end
 end
 
-def main(zip_dir, dst_dir, verbose)
+def main(zip_dir, dst_dir, nproc, verbose)
   Dir.glob("#{zip_dir}/*.zip") do |zip_path|
-    process(zip_path, dst_dir, verbose)
+    process(zip_path, dst_dir, nproc, verbose)
   end
 end
 
@@ -109,17 +112,26 @@ end
 
 def parse_args
   args = ARGV
-  verbose = args.delete("--verbose")
+  option = {}
+  option[:verbose] = false
+  option[:nproc] = 1
+  opt = OptionParser.new
+  opt.on('-v', '--verbose') { option[:verbose] = true }
+  opt.on('-n', '--nproc=NUM', Integer) { |n| option[:nproc] = n }
+  opt.parse!(args)
   help if args.length < 2 || args.length > 3
   zip_dir = args[-2]
   dst_dir = args[-1]
-  [zip_dir, dst_dir, verbose]
+
+  verbose = option[:verbose]
+  nproc = option[:nproc]
+  [zip_dir, dst_dir, nproc, verbose]
 end
 
 def run
-  zip_dir, dst_dir, verbose = parse_args
+  zip_dir, dst_dir, nproc, verbose = parse_args
   Dir.mkdir(dst_dir) unless Dir.exist?(dst_dir)
-  main(zip_dir, dst_dir, verbose)
+  main(zip_dir, dst_dir, nproc, verbose)
 end
 
 run
