@@ -1,2 +1,2 @@
 #!/bin/bash
-bundle exec ruby gmldem2tif.rb $@
+bundle exec ruby gmldem2tif.rb -n `nproc` $@
