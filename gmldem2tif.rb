@@ -81,6 +81,20 @@ def write_raster_data(dataset, raster_data, raster_width, raster_height)
   band.flush_cache
 end
 
+def tif_valid?(tif_path)
+  return false unless File.exist?(tif_path)
+  begin
+    dataset = Gdal::Gdal.open(tif_path, Gdal::Gdalconst::GA_READONLY)
+    return false if dataset.nil?
+    band = dataset.get_raster_band(1)
+    return false if band.nil?
+    dataset = nil
+    true
+  rescue
+    false
+  end
+end
+
 def process(zip_path, dst_dir, nproc, verbose)
   puts "Processing #{zip_path}" if verbose
   Zip::File.open(zip_path) do |zip_file|
@@ -89,6 +103,10 @@ def process(zip_path, dst_dir, nproc, verbose)
         next unless entry.name.downcase.end_with?('.xml')
         dst_name = entry.name.sub('.xml', '.tif')
         dst_path = "#{dst_dir}/#{dst_name}"
+        if tif_valid?(dst_path)
+          puts "Skipping (already exists): #{dst_path}" if verbose
+          next
+        end
         input = entry.get_input_stream.read
         Process.fork do
           convert(input, dst_path, verbose)
