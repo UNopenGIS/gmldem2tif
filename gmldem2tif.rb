@@ -5,7 +5,13 @@ require 'zip'
 
 NODATA_VALUE = -9999.0
 EPSG_CODE = 6668
-TIFF_CREATION_OPTIONS = ['COMPRESS=LZW', 'PREDICTOR=2'].freeze
+TIFF_CREATION_OPTIONS = [
+  'COMPRESS=LZW',
+  'PREDICTOR=2',
+  'TILED=YES',
+  'BLOCKXSIZE=256',
+  'BLOCKYSIZE=256'
+].freeze
 
 def convert(input, dst_path, verbose)
   puts "TIF Path: #{dst_path}" if verbose
