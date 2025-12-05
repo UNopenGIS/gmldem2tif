@@ -22,7 +22,8 @@ def convert(input, dst_path, verbose)
 
   driver = Gdal::Gdal.get_driver_by_name('GTiff')
   File.delete(dst_path) if File.exist?(dst_path)
-  dataset = driver.create(dst_path, raster_width, raster_height, 1, Gdal::Gdalconst::GDT_FLOAT32)
+  options = ['COMPRESS=LZW', 'PREDICTOR=2']
+  dataset = driver.create(dst_path, raster_width, raster_height, 1, Gdal::Gdalconst::GDT_FLOAT32, options)
 
   set_geotransform(dataset, min_coordinates, max_coordinates, raster_width, raster_height)
   set_projection(dataset)
