@@ -5,6 +5,7 @@ require 'zip'
 
 NODATA_VALUE = -9999.0
 EPSG_CODE = 6668
+TIFF_CREATION_OPTIONS = ['COMPRESS=LZW', 'PREDICTOR=2'].freeze
 
 def convert(input, dst_path, verbose)
   puts "TIF Path: #{dst_path}" if verbose
@@ -22,8 +23,7 @@ def convert(input, dst_path, verbose)
 
   driver = Gdal::Gdal.get_driver_by_name('GTiff')
   File.delete(dst_path) if File.exist?(dst_path)
-  options = ['COMPRESS=LZW', 'PREDICTOR=2']
-  dataset = driver.create(dst_path, raster_width, raster_height, 1, Gdal::Gdalconst::GDT_FLOAT32, options)
+  dataset = driver.create(dst_path, raster_width, raster_height, 1, Gdal::Gdalconst::GDT_FLOAT32, TIFF_CREATION_OPTIONS)
 
   set_geotransform(dataset, min_coordinates, max_coordinates, raster_width, raster_height)
   set_projection(dataset)
