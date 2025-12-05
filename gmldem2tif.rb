@@ -27,11 +27,6 @@ DEFAULT_COMPRESSION = 'lzw'
 
 
 def convert(input, dst_path, verbose, compression = DEFAULT_COMPRESSION)
-  # Validate compression parameter
-  unless COMPRESSION_CONFIGS.key?(compression)
-    raise ArgumentError, "Invalid compression type: #{compression}. Must be one of: #{COMPRESSION_CONFIGS.keys.join(', ')}"
-  end
-
   puts "TIF Path: #{dst_path}" if verbose
   puts "Using compression: #{compression}" if verbose
   doc = Nokogiri::XML(input) {|config| config.huge}
