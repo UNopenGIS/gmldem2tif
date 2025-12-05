@@ -5,6 +5,11 @@ require 'zip'
 
 NODATA_VALUE = -9999.0
 EPSG_CODE = 6668
+# GeoTIFF creation options for optimal compression and performance
+# - COMPRESS=LZW: Lossless compression with wide GIS software compatibility
+# - PREDICTOR=2: Horizontal differencing for better compression of DEM data
+# - TILED=YES: Enable tiling for faster partial reads
+# - BLOCKXSIZE/BLOCKYSIZE=256: Standard tile size for cloud-optimized GeoTIFFs
 TIFF_CREATION_OPTIONS = [
   'COMPRESS=LZW',
   'PREDICTOR=2',
