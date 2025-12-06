@@ -160,7 +160,7 @@ def help
   puts "Options:"
   puts "  -v, --verbose              Enable verbose output"
   puts "  -n, --nproc NUM            Number of parallel processes (default: 1)"
-  puts "  -c, --compression TYPE     Compression type: lzw, deflate, none (default: lzw)"
+  puts "  -c, --compression TYPE     Compression type: zstd, zstd-max, lzw, deflate, none (default: zstd)"
   puts ""
   puts "Compression types:"
   COMPRESSION_CONFIGS.each do |type, config|
