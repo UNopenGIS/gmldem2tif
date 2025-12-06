@@ -7,14 +7,23 @@ NODATA_VALUE = -9999.0
 EPSG_CODE = 6668
 
 # Available compression configurations for GeoTIFF output
+# PREDICTOR=3 is used for floating-point DEMs (FLOAT32)
 COMPRESSION_CONFIGS = {
+  'zstd' => {
+    options: ['COMPRESS=ZSTD', 'ZSTD_LEVEL=6', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'ZSTD compression level 6 with predictor (recommended for DEMs, GDAL >= 3.1)'
+  },
+  'zstd-max' => {
+    options: ['COMPRESS=ZSTD', 'ZSTD_LEVEL=9', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'ZSTD compression level 9 with predictor (maximum compression for archives)'
+  },
   'lzw' => {
-    options: ['COMPRESS=LZW', 'PREDICTOR=2', 'TILED=YES', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256'],
-    description: 'LZW compression with predictor (recommended for DEMs)'
+    options: ['COMPRESS=LZW', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'LZW compression with predictor (legacy compatibility)'
   },
   'deflate' => {
-    options: ['COMPRESS=DEFLATE', 'PREDICTOR=2', 'TILED=YES', 'BLOCKXSIZE=256', 'BLOCKYSIZE=256'],
-    description: 'DEFLATE compression with predictor (alternative to LZW)'
+    options: ['COMPRESS=DEFLATE', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'DEFLATE compression with predictor (legacy compatibility)'
   },
   'none' => {
     options: [],
@@ -23,7 +32,7 @@ COMPRESSION_CONFIGS = {
 }.freeze
 
 # Default compression configuration
-DEFAULT_COMPRESSION = 'lzw'
+DEFAULT_COMPRESSION = 'zstd'
 
 
 def convert(input, dst_path, verbose, compression = DEFAULT_COMPRESSION)
