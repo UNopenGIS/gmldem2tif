@@ -6,8 +6,38 @@ require 'zip'
 NODATA_VALUE = -9999.0
 EPSG_CODE = 6668
 
-def convert(input, dst_path, verbose)
+# Available compression configurations for GeoTIFF output
+# PREDICTOR=3 is used for floating-point DEMs (FLOAT32)
+COMPRESSION_CONFIGS = {
+  'zstd' => {
+    options: ['COMPRESS=ZSTD', 'ZSTD_LEVEL=6', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'ZSTD compression level 6 with predictor (recommended for DEMs, GDAL >= 3.1)'
+  },
+  'zstd-max' => {
+    options: ['COMPRESS=ZSTD', 'ZSTD_LEVEL=9', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'ZSTD compression level 9 with predictor (maximum compression for archives)'
+  },
+  'lzw' => {
+    options: ['COMPRESS=LZW', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'LZW compression with predictor (legacy compatibility)'
+  },
+  'deflate' => {
+    options: ['COMPRESS=DEFLATE', 'PREDICTOR=3', 'TILED=YES', 'BLOCKXSIZE=512', 'BLOCKYSIZE=512'],
+    description: 'DEFLATE compression with predictor (legacy compatibility)'
+  },
+  'none' => {
+    options: [],
+    description: 'No compression (uncompressed TIFF)'
+  }
+}.freeze
+
+# Default compression configuration
+DEFAULT_COMPRESSION = 'zstd'
+
+
+def convert(input, dst_path, verbose, compression = DEFAULT_COMPRESSION)
   puts "TIF Path: #{dst_path}" if verbose
+  puts "Using compression: #{compression}" if verbose
   doc = Nokogiri::XML(input) {|config| config.huge}
 
   min_coordinates = parse_coordinate(doc.at_xpath('//gml:lowerCorner').text)
@@ -22,7 +52,8 @@ def convert(input, dst_path, verbose)
 
   driver = Gdal::Gdal.get_driver_by_name('GTiff')
   File.delete(dst_path) if File.exist?(dst_path)
-  dataset = driver.create(dst_path, raster_width, raster_height, 1, Gdal::Gdalconst::GDT_FLOAT32)
+  creation_options = COMPRESSION_CONFIGS[compression][:options]
+  dataset = driver.create(dst_path, raster_width, raster_height, 1, Gdal::Gdalconst::GDT_FLOAT32, creation_options)
 
   set_geotransform(dataset, min_coordinates, max_coordinates, raster_width, raster_height)
   set_projection(dataset)
@@ -95,7 +126,7 @@ def tif_valid?(tif_path)
   end
 end
 
-def process(zip_path, dst_dir, nproc, verbose)
+def process(zip_path, dst_dir, nproc, verbose, compression)
   puts "Processing #{zip_path}" if verbose
   Zip::File.open(zip_path) do |zip_file|
     zip_file.each_slice(nproc) do |entries|
@@ -109,7 +140,7 @@ def process(zip_path, dst_dir, nproc, verbose)
         end
         input = entry.get_input_stream.read
         Process.fork do
-          convert(input, dst_path, verbose)
+          convert(input, dst_path, verbose, compression)
         end
       end
       Process.waitall
@@ -117,14 +148,24 @@ def process(zip_path, dst_dir, nproc, verbose)
   end
 end
 
-def main(zip_dir, dst_dir, nproc, verbose)
+def main(zip_dir, dst_dir, nproc, verbose, compression)
   Dir.glob("#{zip_dir}/*.zip") do |zip_path|
-    process(zip_path, dst_dir, nproc, verbose)
+    process(zip_path, dst_dir, nproc, verbose, compression)
   end
 end
 
 def help
-  puts "Usage: ruby gmldem2tif.rb [--verbose] <zip_dir> <dst_dir>"
+  puts "Usage: ruby gmldem2tif.rb [options] <zip_dir> <dst_dir>"
+  puts ""
+  puts "Options:"
+  puts "  -v, --verbose              Enable verbose output"
+  puts "  -n, --nproc NUM            Number of parallel processes (default: 1)"
+  puts "  -c, --compression TYPE     Compression type: zstd, zstd-max, lzw, deflate, none (default: zstd)"
+  puts ""
+  puts "Compression types:"
+  COMPRESSION_CONFIGS.each do |type, config|
+    puts "  #{type.ljust(10)} - #{config[:description]}"
+  end
   exit 0
 end
 
@@ -133,9 +174,11 @@ def parse_args
   option = {}
   option[:verbose] = false
   option[:nproc] = 1
+  option[:compression] = DEFAULT_COMPRESSION
   opt = OptionParser.new
   opt.on('-v', '--verbose') { option[:verbose] = true }
   opt.on('-n', '--nproc=NUM', Integer) { |n| option[:nproc] = n }
+  opt.on('-c', '--compression=TYPE', COMPRESSION_CONFIGS.keys) { |c| option[:compression] = c }
   opt.parse!(args)
   help if args.length < 2 || args.length > 3
   zip_dir = args[-2]
@@ -143,13 +186,15 @@ def parse_args
 
   verbose = option[:verbose]
   nproc = option[:nproc]
-  [zip_dir, dst_dir, nproc, verbose]
+  compression = option[:compression]
+  [zip_dir, dst_dir, nproc, verbose, compression]
 end
 
 def run
-  zip_dir, dst_dir, nproc, verbose = parse_args
+  zip_dir, dst_dir, nproc, verbose, compression = parse_args
+  puts "Using compression: #{compression} - #{COMPRESSION_CONFIGS[compression][:description]}" if verbose
   Dir.mkdir(dst_dir) unless Dir.exist?(dst_dir)
-  main(zip_dir, dst_dir, nproc, verbose)
+  main(zip_dir, dst_dir, nproc, verbose, compression)
 end
 
 run
