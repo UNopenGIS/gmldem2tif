@@ -119,6 +119,17 @@ def tif_valid?(tif_path)
     return false if dataset.nil?
     band = dataset.get_raster_band(1)
     return false if band.nil?
+    # Opening the dataset and getting the band only reads the TIFF
+    # header/directory -- it never decodes any tile data, so a file
+    # whose pixel data is unreadable (e.g. a malformed compressed
+    # block) still passes this far. checksum forces GDAL to actually
+    # decode every block, so a decode failure (confirmed in practice:
+    # a small number of real GSI DEM1A downloads raise here with
+    # "I/O read error" from a ZSTD frame GDAL can't parse) raises
+    # instead of silently reporting the file as valid -- which
+    # mattered here specifically because callers use this check to
+    # decide whether to skip re-converting a mesh.
+    band.checksum
     dataset = nil
     true
   rescue
